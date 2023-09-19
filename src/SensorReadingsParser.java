@@ -20,6 +20,8 @@ public class SensorReadingsParser
             Logger.getLogger(SensorReadingsParser.class.getName());
     private final Scanner dataFile;
     private int[][] sensors = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
+    boolean isFirstReading = true;
+    char expectedTimeSlotId = 'A';
 
 
     /**
@@ -92,6 +94,28 @@ public class SensorReadingsParser
             }
 
             // check for bad time slot id
+                if (isFirstReading) {
+                isFirstReading = false;
+
+            }else if (timeSlotId < 'A' || timeSlotId >= 'P'){
+                timeSlotId = expectedTimeSlotId;
+                logger.info("Time Slot ID is out of range, replaced with expected ID");
+            }else if (timeSlotId != expectedTimeSlotId) {
+
+                int distanceOff = calcNumOfPositionsOff(timeSlotId, expectedTimeSlotId);
+
+                //Check if one line was missed.
+                if (distanceOff == 1)
+                {
+                        //Incorrect TimeSlotID is set to the expected ID
+                        //TODO return the values of the last sensor reading
+                        timeSlotId = expectedTimeSlotId;
+                        logger.info("Missing reading. Returning all values of the last reading with expected ID.");
+                }else {
+                    logger.severe("Time Slot ID is off by more than 1 position. Going forward as if entry is correct.");
+                }
+
+            }
 
             // read in data and check for out of range
             for (int index = 0; index < NUMBER_OF_SENSORS; index++)
@@ -113,7 +137,8 @@ public class SensorReadingsParser
                 }
             }
         }
-
+        //determine the next expected Time Slot ID
+        expectedTimeSlotId = calcExpectedTimeSlotId(timeSlotId);
         // return reading set with data and time slot id
         ReadingSet readingSet = new ReadingSet(timeSlotId, data);
         return readingSet;
@@ -140,7 +165,26 @@ public class SensorReadingsParser
     {
         return sensors[index][1];
     }
+    public char calcExpectedTimeSlotId(char currId)
+    {
+        if (currId == 'O')
+        {
+            return 'A';
+        } else {
+            int asciiOfCurrId = currId;
+            asciiOfCurrId++;
+            return (char) asciiOfCurrId;
+        }
+    }
 
+    
+
+    public int calcNumOfPositionsOff(int currId, int expectedValue)
+    {
+        int numPositionsOff = Character.getNumericValue(currId) -
+                Character.getNumericValue(expectedValue);
+        return numPositionsOff;
+    }
     /**
      * Close this reader.  Will close the log file
      */

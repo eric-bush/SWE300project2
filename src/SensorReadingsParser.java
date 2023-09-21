@@ -19,7 +19,13 @@ public class SensorReadingsParser
     private static final Logger logger =
             Logger.getLogger(SensorReadingsParser.class.getName());
     private final Scanner dataFile;
+
+    private static final int EXPECTED_LENGTH = 4;
     private int[][] sensors = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
+    boolean isFirstReading = true;
+    char expectedTimeSlotId = 'A';
+    boolean lineWasSkipped = false;
+
 
 
     /**
@@ -76,22 +82,48 @@ public class SensorReadingsParser
         {
             throw new NoMoreData();
         } else {
+            //if (acutual id != expected)
+            //  populate the array with the values from the previous valid line and expected id
             line = dataFile.nextLine();
             parts = line.split(delimiter);
             timeSlotId = parts[0].charAt(0);
 
             // check for either missing data or too much data
-            if(parts.length < 4) {
+
+            if(parts.length < EXPECTED_LENGTH) {
                 logger.severe("Record is missing data");
                 close();
                 getNext();
-            } else if (parts.length >= 5) {
+            } else if (parts.length > EXPECTED_LENGTH) {
                 logger.severe("Record has too much data");
                 close();
                 getNext();
             }
+        }
+                // check for bad time slot id
+            if (isFirstReading) {
+                isFirstReading = false;
 
-            // check for bad time slot id
+            }else if (timeSlotId < 'A' || timeSlotId > 'O'){
+                timeSlotId = expectedTimeSlotId;
+                logger.info("Time Slot ID is out of range, replaced with expected ID");
+            }else if (timeSlotId != expectedTimeSlotId) {
+
+                int distanceOff = calcNumOfPositionsOff(timeSlotId, expectedTimeSlotId);
+
+                //Check if one line was missed.
+                if (distanceOff == 1)
+                {
+                        //Incorrect TimeSlotID is set to the expected ID
+                        //TODO return the values of the last sensor reading
+                        timeSlotId = expectedTimeSlotId;
+                        logger.info("Missing reading. Returning all values of the last reading with expected ID.");
+                }else {
+                    logger.severe("Time Slot ID is off by more than 1 position. Going forward as if entry is correct.");
+                }
+
+            }
+
 
             // read in data and check for out of range
             for (int index = 0; index < NUMBER_OF_SENSORS; index++)
@@ -112,7 +144,8 @@ public class SensorReadingsParser
                     parts = line.split(" ");
                 }
             }
-        }
+        //determine the next expected Time Slot ID
+        expectedTimeSlotId = calcExpectedTimeSlotId(timeSlotId);
 
         // return reading set with data and time slot id
         ReadingSet readingSet = new ReadingSet(timeSlotId, data);
@@ -139,6 +172,25 @@ public class SensorReadingsParser
     public int getMax(int index)
     {
         return sensors[index][1];
+    }
+
+    public char calcExpectedTimeSlotId(char currId)
+    {
+        if (currId == 'O')
+        {
+            return 'A';
+        } else {
+            int asciiOfCurrId = currId;
+            asciiOfCurrId++;
+            return (char) asciiOfCurrId;
+        }
+    }
+
+    public int calcNumOfPositionsOff(int currId, int expectedValue)
+    {
+        int numPositionsOff = Character.getNumericValue(currId) -
+                Character.getNumericValue(expectedValue);
+        return numPositionsOff;
     }
 
     /**

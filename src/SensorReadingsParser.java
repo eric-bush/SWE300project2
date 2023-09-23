@@ -26,8 +26,10 @@ public class SensorReadingsParser
     private int[] previousSensorData = {0, 0, 0};
     private boolean isFirstReading = true;
     private int[] sensorReadings = {0, 0, 0};
-    private char timeSlotId = ' ';
+    private char timeSlotId;
+    private char prevTimeSlotID;
     private boolean isMissingOnePreviousReading;
+
 
 
 

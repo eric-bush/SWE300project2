@@ -22,12 +22,12 @@ public class SensorReadingsParser
 
     private int[][] sensors = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
     private char expectedTimeSlotId = FIRST_TIME_SLOT_ID;
-    private char prevTimeSlotId;
+
     private int[] previousSensorData = {0, 0, 0};
     private boolean isFirstReading = true;
     private int[] sensorReadings = {0, 0, 0};
     private char timeSlotId = ' ';
-    private boolean isMissingReading;
+    private boolean isMissingOnePreviousReading;
 
 
 
@@ -78,13 +78,13 @@ public class SensorReadingsParser
         String delimiter = " ";
 
         // check for eof if previous line was not skipped
-        if (!dataFile.hasNextLine() && !isMissingReading) {
+        if (!dataFile.hasNextLine() && !isMissingOnePreviousReading) {
             throw new NoMoreData();
         } else {
-            if (!isMissingReading) {
+            if (!isMissingOnePreviousReading) {
                 lineInFile = dataFile.nextLine();
             }else {
-                isMissingReading = false;
+                isMissingOnePreviousReading = false;
             }
 
             parts = lineInFile.split(delimiter);
@@ -188,7 +188,7 @@ public class SensorReadingsParser
             //Check if one line was missed.
             if (distanceOff == 1) {
                 //Incorrect TimeSlotID is set to the expected ID
-                isMissingReading = true;
+                isMissingOnePreviousReading = true;
                 timeSlotId = expectedTimeSlotId;
                 sensorReadings = previousSensorData;
                 logger.info("Missing reading. Returning all values of the last reading with expected ID.");
@@ -201,13 +201,9 @@ public class SensorReadingsParser
         return true;
     }
 
+    
     public char calcExpectedTimeSlotId(char currId)
     {
-        /**
-        if (isMissingReading){
-            return currId;
-        }
-         **/
         if (currId == 'O')
         {
             return 'A';
